@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en-US">
+	<head>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width,initial-scale=1">
+
+		
+		<title>That&#39;s What Michael Scott Said - Text Prediction using Recurrent Neural Networks &middot; Rachel Kopecky</title>
+		
+
+		
+			
+		
+
+		
+
+		
+		
+
+
+<link href='//cdn.bootcss.com/highlight.js/9.11.0/styles/github.min.css' rel='stylesheet' type='text/css' />
+
+
+
+		
+
+		<link rel="stylesheet" href="../../../../font-awesome/css/font-awesome.min.css" type="text/css">
+		<link rel="stylesheet" href="../../../../css/poole.css">
+		<link rel="stylesheet" href="../../../../css/syntax.css">
+		<link rel="stylesheet" href="../../../../css/hyde.css">
+		
+		
+		<link href="" rel="alternate" type="application/rss+xml" title="Rachel Kopecky">
+		<link href="../../../../2018/04/25/thats-what-michael-scott-said---text-prediction-using-recurrent-neural-networks" rel="canonical">
+	</head>
+
+	<body class="theme-base-0d  h-entry">
+		<main class="content container" role="main">
+			<article class="post">
+				<header>
+					<a class="u-url" href="../../../../2018/04/25/thats-what-michael-scott-said---text-prediction-using-recurrent-neural-networks">
+						<h1 class="post-title p-name">That&#39;s What Michael Scott Said - Text Prediction using Recurrent Neural Networks</h1>
+					</a>
+					<time class="post-date dt-published" datetime="2018-04-25T00:00:00Z">Wednesday, 25 April 2018</time>
+				</header>
+				<main class="post-content e-content">
+					<div class="figure">
+<img src="../../../../img/ms-quote.png" />
+
+</div>
+<p>Hello! In this post I am excited to share with you a text generator that I created using recurrent neural networks. I was lucky enough to find out that there is a data set containing <a href="https://www.reddit.com/r/dataisbeautiful/comments/88ymvb/battle_dataviz_battle_for_the_month_of_april_2018/" target="_blank">every line ever</a> from The Office, and my goal with this analysis is to build a text generator that will predict what Michael Scott might say next!</p>
+<div id="neural-networks" class="section level2">
+<h2>Neural Networks</h2>
+<p>In Machine Learning, neural networks are a form of Deep Learning designed to loosely mirror the human brain. Neural networks aid in tasks like clustering and classification, as they are good at identifying patterns within data. The general make-up of a neural network can be described as three layers:<br />
+    <strong><em>Input Layer</em></strong>: This is the layer that receives the data and passes it on.<br />
+    <strong><em>Output Layer</em></strong>: The result of this layer is the forecast, and it depends on the type of model that you are building. For example, if you are classifying handwriting samples to determine which letter is being used, then your output layer would consist of 26 nodes, one for each letter of the alphabet.<br />
+    <strong><em>Hidden Layer</em></strong>: The hidden layer is somewhat of a black box mechanism. It lies between the input and output layers, applying transformations to the inputs before feeding those out. Within this layer, the inputs are transformed, weighted by significance, and adjusted until the model fits the data. The neural network is considered “deep” if it contains more than one hidden layer.</p>
+<div class="figure">
+<img src="../../../../img/ff-nn.png" />
+
+</div>
+<div id="feed-forward-neural-networks" class="section level3">
+<h3>Feed-Forward Neural Networks</h3>
+<p>The image above displays what is called a <em>feed-forward</em> neural network. In a feed-forward network, each layer receives inputs from the previous layer, and then feeds the output to the next layer. This is the simplest type of neural network, as information always moves in one direction.</p>
+</div>
+<div id="recurrent-neural-networks" class="section level3">
+<h3>Recurrent Neural Networks</h3>
+<p>A recurrent neural network (RNN) is more dynamic, as it can use its internal state, or memory, to understand and process sequences of inputs. In the feed-forward network above, we assume that all inputs and outputs are independent of each other, whereas a recurrent neural network takes into account any information that has already been calculated so far, and allows it to persist. They are designed to recognize patterns in sequences of data, such as text and speech. An everyday example of an RNN is your phone’s word completion/suggestion feature. With each letter you type, the network is evaluating the entire sequence of letters and then suggesting (predicting) the completion of the word and evaluating the sentence to predict which word you might want to use next.</p>
+<p>The cyclic nature of an RNN is portrayed in the image below:</p>
+<div class="figure">
+<img src="../../../../img/rnn.png" />
+
+</div>
+<p>The specific type of recurrent neural network that we are going to use is called a Long Short Term Memory network, or LSTM, which is superior for cases where long-term dependency on information is important, such as text prediction.</p>
+</div>
+</div>
+<div id="lets-model" class="section level2">
+<h2>Let’s Model</h2>
+<p>To implement our recurrent neural network, we will be using the <code>keras</code> package for R. If you have never used this package, you will also need to install <a href="https://www.anaconda.com/download/" target="_blank">Anaconda</a> and then run <code>install_keras()</code> after loading the library.</p>
+<div id="the-data" class="section level3">
+<h3>The Data</h3>
+<pre class="r"><code>library(readr)
+library(stringr)
+library(tidyverse)
+library(tokenizers)
+library(keras)
+
+office &lt;- read.csv(&quot;the-office.csv&quot;)</code></pre>
+<p>You can see below that this data set contains information about the season, epidsode, and speaker of each line, as well as the complete lines themselves.</p>
+<pre class="r"><code>str(office)</code></pre>
+<pre><code>## &#39;data.frame&#39;:    59909 obs. of  7 variables:
+##  $ id       : int  1 2 3 4 5 6 7 8 9 10 ...
+##  $ season   : int  1 1 1 1 1 1 1 1 1 1 ...
+##  $ episode  : int  1 1 1 1 1 1 1 1 1 1 ...
+##  $ scene    : int  1 1 1 1 1 2 3 3 3 3 ...
+##  $ line_text: chr  &quot;All right Jim. Your quarterlies look very good. How are things at the library?&quot; &quot;Oh, I told you. I couldn&#39;t close it. So...&quot; &quot;So you&#39;ve come to the master for guidance? Is this what you&#39;re saying, grasshopper?&quot; &quot;Actually, you called me in here, but yeah.&quot; ...
+##  $ speaker  : Factor w/ 797 levels &quot;(Pam&#39;s mom) Heleen&quot;,..: 468 359 468 359 468 468 468 552 468 552 ...
+##  $ deleted  : logi  FALSE FALSE FALSE FALSE FALSE FALSE ...</code></pre>
+<pre class="r"><code>head(office$line_text, n = 3)</code></pre>
+<pre><code>## [1] &quot;All right Jim. Your quarterlies look very good. How are things at the library?&quot;     
+## [2] &quot;Oh, I told you. I couldn&#39;t close it. So...&quot;                                         
+## [3] &quot;So you&#39;ve come to the master for guidance? Is this what you&#39;re saying, grasshopper?&quot;</code></pre>
+<p>To save some computational complexity, we are only going to use one season for this analysis. I decided to use season 2, and I also chose to exclude any deleted scenes.</p>
+<pre class="r"><code>michael &lt;- office %&gt;% 
+  filter(speaker == &quot;Michael&quot; 
+         &amp; deleted == &quot;FALSE&quot; 
+         &amp; season == 2)
+
+lines &lt;- michael$line_text</code></pre>
+<p>Now we have a list that contains all of Michael’s lines from season 2.</p>
+<pre class="r"><code>head(lines, n = 3)</code></pre>
+<pre><code>## [1] &quot;Tonight is the Dundies, the annual employee awards night here at Dunder Mifflin. [holds up a trophy of a business man] And this is everybody&#39;s favorite day. Everybody looks forward to it, because, you know, a lot of the people here don&#39;t get trophies, very often. Like Meredith or Kevin, I mean, who&#39;s gonna give Kevin an award? Dunkin&#39; Donuts? Plus, bonus, it&#39;s really, really funny. So I, you know, an employee will go home, and he&#39;ll tell his neighbor, &#39;Hey, did you get an award?&#39; And the neighbor will say, &#39;No man. I mean, I slave all day and nobody notices me.&#39; Next thing you know, employee smells something terrible coming from neighbor&#39;s house. Neighbor&#39;s hanged himself due to lack of recognition. So...&quot;
+## [2] &quot;[in a Fat Albert voice] Hey hey hey! It&#39;s Fat Halpert.&quot;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    
+## [3] &quot;[in Fat Albert voice] Fat Halpert. [in normal voice] Jim Halpert.&quot;</code></pre>
+</div>
+<div id="prep" class="section level3">
+<h3>Prep</h3>
+<p>There are a lot of stage directions included within the text, and I want to get rid of those since they are not part of the actual speaker lines. We can do this by removing any text that appears within square brackets. (It may be interesting to build a model that includes these stage directions to see if the network can script a scene).</p>
+<p>We want our data to be in the form of a vector where each element is a single character.</p>
+<pre class="r"><code>lines_sub &lt;- gsub(&quot;\\[[^\\]+\\]&quot;, &quot;&quot;, lines)
+
+chars &lt;- lines_sub %&gt;%
+  str_to_lower() %&gt;%
+  str_c(collapse = &quot;\n&quot;) %&gt;% 
+  tokenize_characters(strip_non_alphanum = FALSE, simplify = TRUE)
+
+head(chars, n = 20)</code></pre>
+<pre><code>##  [1] &quot;t&quot; &quot;o&quot; &quot;n&quot; &quot;i&quot; &quot;g&quot; &quot;h&quot; &quot;t&quot; &quot; &quot; &quot;i&quot; &quot;s&quot; &quot; &quot; &quot;t&quot; &quot;h&quot; &quot;e&quot; &quot; &quot; &quot;d&quot; &quot;u&quot;
+## [18] &quot;n&quot; &quot;d&quot; &quot;i&quot;</code></pre>
+<p>We also need a separate vector that contains only the unique character elements from above. We will use this as an index reference for the character elements.</p>
+<pre class="r"><code>chars_unique &lt;- chars %&gt;% 
+  unlist %&gt;%
+  unique() %&gt;%
+  sort()
+
+head(chars_unique, n = 20)</code></pre>
+<pre><code>##  [1] &quot;&#39;&quot;  &quot;-&quot;  &quot; &quot;  &quot;\n&quot; &quot;!&quot;  &quot;$&quot;  &quot;%&quot;  &quot;,&quot;  &quot;.&quot;  &quot;/&quot;  &quot;:&quot;  &quot;;&quot;  &quot;?&quot;  &quot;0&quot; 
+## [15] &quot;1&quot;  &quot;2&quot;  &quot;3&quot;  &quot;4&quot;  &quot;5&quot;  &quot;8&quot;</code></pre>
+<pre><code>## [1] &quot;total characters: 47&quot;</code></pre>
+<p>We are going to create a data set that contains sequences of characters with a length equal to the average length of a Michael Scott line. This data set will contain multiple list elements, each having [1] the sequence of characters of average line length and [2] the character that immediately follows that sequence. These sequences will overlap one another to ensure we have thorough representation of all potential sequences. This data set will help us build our predictor and target vectors for training the model.</p>
+<pre class="r"><code>seq_len &lt;- round(mean(nchar(lines)))
+
+dataset &lt;- map(
+  seq(1, length(chars) - seq_len - 1, by = 3), 
+  ~list(sequence = chars[.x:(.x + seq_len - 1)], next_char = chars[.x + seq_len])
+  )
+
+dataset &lt;- transpose(dataset)</code></pre>
+<p>Since we are using the <code>keras</code> package to train our model, we need our data to be an array of form <strong>(number of sequences, length of sequence, number of features)</strong>. We can first create two empty arrays to pre-allocate the space, and then fill in the first element using a for loop.</p>
+<pre class="r"><code>x &lt;- array(0, dim = c(length(dataset$sequence), seq_len, length(chars_unique)))
+y &lt;- array(0, dim = c(length(dataset$sequence), length(chars_unique)))</code></pre>
+<pre class="r"><code>for(i in 1:length(dataset$sequence)){
+  
+  x[i,,] &lt;- sapply(chars_unique, function(x){
+    as.integer(x == dataset$sequence[[i]])
+  })
+  
+  y[i,] &lt;- as.integer(chars_unique == dataset$next_char[[i]])
+  
+}</code></pre>
+</div>
+<div id="model" class="section level3">
+<h3>Model</h3>
+<p>Now our data is ready for modeling! As stated above, we are going to imlement an LSTM model. We will add this layer to our sequential model, defining the dimensions of the input shape similar to our <em>x</em> array created above. We will use <em>softmax</em> as our activation layer, which will cause our resulting predictions to sum to 1. We will use the <em>RMSProp</em> optimizer, which is usually a good choice for recurrent neural networks, with a learning rate of <em>0.01</em> (you can adjust this parameter as you see fit).</p>
+<p>I had to run this model overnight using 200 epochs, so if you are crunched for time you might want to try lowering that value (this will, of course, alter the performance/results of your model).</p>
+<pre class="r"><code>model &lt;- keras_model_sequential()
+
+model %&gt;%
+  layer_lstm(128, input_shape = c(seq_len, length(chars_unique))) %&gt;%
+  layer_dense(length(chars_unique)) %&gt;%
+  layer_activation(&quot;softmax&quot;)
+
+optimizer &lt;- optimizer_rmsprop(lr = 0.01)
+
+model %&gt;% compile(
+  loss = &quot;categorical_crossentropy&quot;, 
+  optimizer = optimizer
+)
+
+history &lt;- model %&gt;% fit(
+  x, y,
+  batch_size = 128,
+  epochs = 200
+)</code></pre>
+<p>Now that we have built the model we can see what type of sentences it will generate!</p>
+<p>I am asking it to generate 1000 sequences of length 200, and each of these will be initialized with a randomly chosen sequence from our data. As each new character is predicted and added to the sequence, we will feed those sequences back into the model until we have generated 200 new characters.</p>
+<pre class="r"><code>predicted &lt;- NULL
+
+for (j in 1:1000) {
+
+  start_index &lt;- sample(1:(length(chars) - seq_len), size = 1)
+  sequence &lt;- chars[start_index:(start_index + seq_len - 1)]
+  predicted[[j]] &lt;- &quot;&quot;
+  init &lt;- NULL
+
+    for(i in 1:200) {
+
+      init &lt;- sapply(chars_unique, function(z){
+        as.integer(z == sequence)
+      })
+
+      init &lt;- array_reshape(init, c(1, dim(init)))
+      
+      preds &lt;- predict(model, init)
+      next_index &lt;- preds %&gt;% which.max()
+      next_char &lt;- chars_unique[next_index]
+      
+      predicted[[j]] &lt;- str_c(predicted[[j]], next_char, collapse = &quot;&quot;)
+      
+      sequence &lt;- c(sequence[-1], next_char)
+    }
+  print(j)
+}</code></pre>
+<p>I have included a few snippets from the model results below. In general, the model did decently well at building English words. It was also able to correctly use an apostrophe and form sentences with punctuation.</p>
+<blockquote>
+<p>“you know what? i am going to be atting place. so i drrrupe, i win.”</p>
+</blockquote>
+<p> </p>
+<blockquote>
+<p>“that’s her the day. ok? you know? why don’t you, ah, what is that i go sight.”</p>
+</blockquote>
+<p>The model also recognized Michael’s propensity to reference other characters, and the output showed a lot of references to Dwight, Jim, Pam, and Jan.</p>
+<blockquote>
+<p>“because i did dwight be fearing from well get hows to think you wiftso comestion to pam?”</p>
+</blockquote>
+<p> </p>
+<blockquote>
+<p>“show yaaaal… come on, jan, a good work.”</p>
+</blockquote>
+<p>Of course, there is a lot of output that did not make much sense at all. I am still very new to deep learning, and this was only my first attempt at building a LSTM network. I hope to spend more time tuning the various parameters and performing model validation and evaluation to hopefully build a model that can more accurately complete these lines.</p>
+</div>
+</div>
+<div id="conclusion" class="section level2">
+<h2>Conclusion</h2>
+<p>We have seen that <code>keras</code> and LSTM networks can help us build a simple text generator, however there is clearly room for improvement. I hope that this walkthrough has given you a solid introduction to understanding recurrent neural networks and how we can implement them in R, and I wish you the best with your machine learning endeavors!</p>
+<div id="resources" class="section level4">
+<h4>Resources</h4>
+<p><a href="https://keras.io/" target="_blank">Keras Documentation</a></p>
+<p><a href="https://chunml.github.io/ChunML.github.io/project/Creating-Text-Generator-Using-Recurrent-Neural-Network/" target="_blank">Creating a Text Generator using Recurrent Neural Networks</a></p>
+<p><a href="https://blog.paperspace.com/recurrent-neural-networks-part-1-2/" target="_blank">Recurrent Neural Networks - Part 1</a></p>
+<p><a href="https://tensorflow.rstudio.com/categories/keras.html" target="_blank">TensorFlow for R</a></p>
+<p><a href="https://deeplearning4j.org/lstm.html" target="_blank">A Beginner’s Guide to Recurrent Neural Networks and LSTMs</a></p>
+<p><a href="http://news.mit.edu/2017/explained-neural-networks-deep-learning-0414" target="_blank">Explained: Neural Networks</a></p>
+</div>
+</div>
+
+				</main>
+				<footer class="footer">
+					
+					<span>
+						Category:
+						
+						<a class="p-category" href="../../../../categories/machine-learning/">Machine Learning</a>
+						
+					</span>
+					
+					
+					<p>
+						Tags:
+						
+						<a class="p-category" href="../../../../tags/recurrent-neural-networks/">Recurrent Neural Networks</a>
+						
+						<a class="p-category" href="../../../../tags/r/">R</a>
+						
+
+					</p>
+					
+				</footer>
+			</article>
+		</main>
+				<aside class="sidebar">
+			<div class="container sidebar-sticky">
+				<header class="sidebar-about h-card vcard p-author">
+					
+					<a class="u-url u-uid" rel="me" href="../../../../">
+						<img class="u-photo" src="../../../../img/rkopecky.png" width=128 height=128 />
+					</a>
+					
+
+					
+					<span class="site-title u-name fn">
+					  <a class="u-url u-uid" rel="me" href="../../../../">Rachel Kopecky</a>
+				  </span>
+					
+
+					<p class="lead p-note">
+						 Master of Science in Analytics candidate and aspiring Data Scientist. 
+					</p>
+
+					<nav>
+						<ul class="sidebar-nav">
+							
+							<li><a href="../../../../about/"> About </a></li>
+							
+							<li><a href="../../../../post/"> Posts </a></li>
+							
+						</ul>
+					</nav>
+
+					
+						<aside class="contact">
+						  
+							  <h3 class="contact-head">Contact</h3>
+						  
+							<ul class="contact-list">
+								
+								<li>
+									
+		  							<i class='fa fa-envelope fa-fw'></i>
+		  							<a href="mailto:rachelakopecky@gmail.com" class="u-email email" rel="me">
+		  							  Email
+		  							</a>
+									
+								</li>
+								
+								<li>
+									
+									  
+		  						    <i class='fa fa-github fa-fw'></i>
+		  						  
+		  							<a href="https://github.com/rachelkopecky" class="u-url url" rel="me">
+		  							  GitHub
+		  							</a>
+								
+								</li>
+								
+								<li>
+									
+									  
+		  						    <i class='fa fa-linkedin fa-fw'></i>
+		  						  
+		  							<a href="https://linkedin.com/in/rkopecky" class="u-url url" rel="me">
+		  							  LinkedIn
+		  							</a>
+								
+								</li>
+								
+							</ul>
+						</aside>
+					
+				</header>
+
+				<footer>&copy; 2018. All rights reserved. </footer>
+			</div>
+		</aside>
+
+		  <footer>
+  
+  
+  
+  
+
+  <script src="//cdn.bootcss.com/highlight.js/9.11.0/highlight.min.js"></script>
+  
+  
+  
+  <script src="//cdn.bootcss.com/highlight.js/9.11.0/languages/r.min.js"></script>
+  <script src="//cdn.bootcss.com/highlight.js/9.11.0/languages/yaml.min.js"></script>
+  <script>hljs.configure({languages: []}); hljs.initHighlightingOnLoad();</script>
+  
+
+ 
+  
+<script src="../../../../js/math-code.js"></script>
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({
+  tex2jax: {
+    inlineMath: [['$','$'], ['\\(','\\)']],
+    processEscapes: true
+  }
+});
+</script>
+<script async src="//cdn.bootcss.com/mathjax/2.7.1/MathJax.js?config=TeX-MML-AM_CHTML"></script>
+
+
+  
+  </footer>
+  </body>
+</html>
+
+	</body>
+</html>

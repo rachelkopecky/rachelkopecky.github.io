@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Machine Learning on Rachel Kopecky</title>
+    <link>/categories/machine-learning/</link>
+    <description>Recent content in Machine Learning on Rachel Kopecky</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-us</language>
+    <lastBuildDate>Wed, 25 Apr 2018 00:00:00 +0000</lastBuildDate>
+    
+	<atom:link href="/categories/machine-learning/index.xml" rel="self" type="application/rss+xml" />
+    
+    
+    <item>
+      <title>That&#39;s What Michael Scott Said - Text Prediction using Recurrent Neural Networks</title>
+      <link>/2018/04/25/thats-what-michael-scott-said---text-prediction-using-recurrent-neural-networks/</link>
+      <pubDate>Wed, 25 Apr 2018 00:00:00 +0000</pubDate>
+      
+      <guid>/2018/04/25/thats-what-michael-scott-said---text-prediction-using-recurrent-neural-networks/</guid>
+      <description>Hello! In this post I am excited to share with you a text generator that I created using recurrent neural networks. I was lucky enough to find out that there is a data set containing every line ever from The Office, and my goal with this analysis is to build a text generator that will predict what Michael Scott might say next!
+Neural NetworksIn Machine Learning, neural networks are a form of Deep Learning designed to loosely mirror the human brain.</description>
+    </item>
+    
+  </channel>
+</rss>
