@@ -45,7 +45,7 @@
 				</header>
 				<main class="post-content e-content">
 					<div class="figure">
-<img src="../../../../img/ms-quote.png" />
+<img src="../../../../img/ms-quote.PNG" />
 
 </div>
 <p>Hello! In this post I am excited to share with you a text generator that I created using recurrent neural networks. I was lucky enough to find out that there is a data set containing <a href="https://www.reddit.com/r/dataisbeautiful/comments/88ymvb/battle_dataviz_battle_for_the_month_of_april_2018/" target="_blank">every line ever</a> from The Office, and my goal with this analysis is to build a text generator that will predict what Michael Scott might say next!</p>
@@ -56,7 +56,7 @@
     <strong><em>Output Layer</em></strong>: The result of this layer is the forecast, and it depends on the type of model that you are building. For example, if you are classifying handwriting samples to determine which letter is being used, then your output layer would consist of 26 nodes, one for each letter of the alphabet.<br />
     <strong><em>Hidden Layer</em></strong>: The hidden layer is somewhat of a black box mechanism. It lies between the input and output layers, applying transformations to the inputs before feeding those out. Within this layer, the inputs are transformed, weighted by significance, and adjusted until the model fits the data. The neural network is considered “deep” if it contains more than one hidden layer.</p>
 <div class="figure">
-<img src="../../../../img/ff-nn.png" />
+<img src="../../../../img/ff-nn.PNG" />
 
 </div>
 <div id="feed-forward-neural-networks" class="section level3">
@@ -68,7 +68,7 @@
 <p>A recurrent neural network (RNN) is more dynamic, as it can use its internal state, or memory, to understand and process sequences of inputs. In the feed-forward network above, we assume that all inputs and outputs are independent of each other, whereas a recurrent neural network takes into account any information that has already been calculated so far, and allows it to persist. They are designed to recognize patterns in sequences of data, such as text and speech. An everyday example of an RNN is your phone’s word completion/suggestion feature. With each letter you type, the network is evaluating the entire sequence of letters and then suggesting (predicting) the completion of the word and evaluating the sentence to predict which word you might want to use next.</p>
 <p>The cyclic nature of an RNN is portrayed in the image below:</p>
 <div class="figure">
-<img src="../../../../img/rnn.png" />
+<img src="../../../../img/rnn.PNG" />
 
 </div>
 <p>The specific type of recurrent neural network that we are going to use is called a Long Short Term Memory network, or LSTM, which is superior for cases where long-term dependency on information is important, such as text prediction.</p>
